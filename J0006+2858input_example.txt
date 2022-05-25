@@ -1,0 +1,24 @@
+nwalkers	100
+niters		100000
+nburn		50000
+
+targname	GaiaJ0006+2858
+
+specfile	J0006+2858spec_example.txt
+modelfile	J0006+2858model_example.txt
+
+priorfile	J0006+2858priors_example.txt
+perturbfile	J0006+2858perturbs_example.txt
+
+chainfile	J0006+2858_chain-example.npy
+probfile	J0006+2858_prob-example.npy
+accpfile	J0006+2858_accp-example.npy
+
+
+inc	45
+Tin	1200
+Tout	800
+
+WD_T	20990
+WD_R	0.0155
+d	156.5256
