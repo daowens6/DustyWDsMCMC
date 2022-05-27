@@ -126,6 +126,7 @@ def sample_walkers(nsamples,flatchain,nu):
 
 parser = argparse.ArgumentParser()
 parser.add_argument("inputfile", type=str,help='path to input file')
+parser.add_argument('-newrun', action='store_true',help='Start a new MCMC run? Note: this will overwrite an existing run')
 parser.add_argument('-plot', action='store_true',help='produce corner+excess SED plots of existing MCMC run')
 parser.add_argument('-fit_R', action='store_true',help='put model in terms of disk radii instead of temperature')
 parser.add_argument('-walkerplot',action='store_true',help='plot walkers vs steps for each model parameter')
@@ -180,7 +181,7 @@ obs = (c/wv_obs*1e8, f_exc, f_err, weights/np.max(weights))
 ndim = np.int64(len(initial))
 p0 = [np.array(initial) + perturbs*np.random.randn(ndim) for i in range(nwalkers)]
 
-if args.plot:
+if args.plot: #Plotting corner and excess SED
     emceechain = np.load(chainfile)
     emceeprob = np.load(probfile)
     emceeaccp = np.load(accpfile)
@@ -224,15 +225,17 @@ if args.plot:
     plt.savefig(target+'_SED.pdf')
     plt.close()
     
-    # Saving highest likelihood model and std to txt file
+    # Saving highest likelihood model and std to txt file (columns: [wv,model flux,model error])
     savearray = np.zeros((len(wvplot),3))
     savearray[:,0],savearray[:,1],savearray[:,2] = wvplot, bestmodel, spread
     np.savetxt(target+'-bestmodel.txt',savearray,'%.5f')
     
 elif args.walkerplot:
     emceechain = np.load(chainfile)
+    niters = (emceechain.shape)[1]
+    emceechain[:,:,1],emceechain[:,:,2] = np.exp(emceechain[:,:,1]),np.exp(emceechain[:,:,2])
     
-    if args.fit_R:
+    if args.fit_R: # Plot in terms of R instead of T
         mosaic = [[r'i (deg)'],
                   [r'$\mathrm{R_{in}}$ ($\mathrm{R_{\odot}}$)'],
                   [r'$\mathrm{R_{out}}$ ($\mathrm{R_{\odot}}$)']]
@@ -247,13 +250,24 @@ elif args.walkerplot:
     for i in range(len(mosaic)):
         ax = mosaic[i][0]
         for j,walker in enumerate(emceechain[:,:,i]):
-            axes[ax].plot(xaxis,walker,'k',alpha = 0.05)
+            axes[ax].plot(xaxis,walker,'k',alpha = niters**(-0.34))
         axes[ax].set_ylabel(ax,fontsize=12)
     axes[ax].set_xlabel('steps',fontsize=12)
     plt.savefig(target+'-walkerplot.png')
     plt.close()
 
-else:  
+else:
+    oldrun=False
+    if not args.newrun:
+        try: # Try to load an old run
+            oldchain = np.load(chainfile)
+            oldprob = np.load(probfile)
+            oldaccp = np.load(accpfile)
+            oldsteps = (oldchain.shape)[1] # Number of steps in old run
+            p0 = oldchain[:,-1,:] # Making the starting position the last step of the existing run
+            oldrun = True
+        except IOError: # If no old run, start a new one
+            print('Starting new run')
     # Running MCMC:
     sampler, pos, prob, state = main(p0,nwalkers, niters, ndim, lnprob, obs)
     
@@ -266,9 +280,19 @@ else:
         emceechain[:,:,1:] = Tring_to_R(emceechain[:,:,1:],WD_T,(WD_R*u.cm).to(u.Rsun).value)
         
     # Saving emceechain, emceeprob, emceeaccp to npy files
-    np.save(chainfile,emceechain)
-    np.save(probfile,emceeprob)
-    np.save(accpfile,emceeaccp)
+    if oldrun: # If we continued an older run
+        chainout = np.append(oldchain,emceechain,axis=1) # Combining new and existing chain
+        probout = np.append(oldprob,emceeprob,axis=1)
+        oldaccp*=oldsteps # Converting acceptance fraction to nsteps accepted
+        emceeaccp*=niters # Doing same as above
+        accpout = (oldaccp+emceeaccp)/(oldsteps+niters) # Converting back to acceptance fraction
+        np.save(chainfile,chainout)
+        np.save(probfile,probout)
+        np.save(accpfile,accpout)
+    else: # If this was a new run (or overwriting an old run)
+        np.save(chainfile,emceechain)
+        np.save(probfile,emceeprob)
+        np.save(accpfile,emceeaccp)
 
 
 
