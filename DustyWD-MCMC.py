@@ -95,7 +95,7 @@ def model(theta,nu):
     for n,pt in enumerate(nu):
         # Calculating model flux value at every nu point (pt)
         model[n] = ((12*(np.pi**(1/3))) * (((WD_R**2)*np.cos(np.radians(inc)))/(d**2)) *
-                    (((2*k*WD_T)/(3*h*pt))**(8/3)) * ((h*(pt**3))/(c**2)) * integrate.quad(integrand,xin[n],xout[n])[0]) / 1e-29# + sc
+                    (((2*k*WD_T)/(3*h*pt))**(8/3)) * ((h*(pt**3))/(c**2)) * integrate.quad(integrand,xin[n],xout[n])[0]) / 1e-29
     return model
 
 ### MAIN FUNCTION RUNNING MCMC ###
@@ -135,7 +135,6 @@ args = parser.parse_args()
 inpfile = args.inputfile
 
 # Loading everything in the input file
-#inputs = LoadFile('J0006+2858input_test.txt')
 inputs = LoadFile(inpfile)
 index = np.array(inputs['index'])
 values = np.array(inputs['values'])
@@ -158,7 +157,8 @@ WD_R = (inputs['WD_R']*u.Rsun).to(u.cm)  # Converting from Rsun to cm
 d = (inputs['d']*u.pc).to(u.cm)  # Converting from pc to cm
 WD_T = np.float64(inputs['WD_T'])
 Tsubl = priorfile['Tsubl']
-Ttide = priorfile['Ttide']
+Rtide = (priorfile['Rtide']*u.Rsun).to(u.cm)
+Ttide = T_Ring(Rtide.value)
 
 # Loading observed spectral data
 spec_obs = LoadSpec(inputs['specfile'])
@@ -274,7 +274,6 @@ else:
     emceechain = sampler.chain
     emceeprob  = sampler.lnprobability
     emceeaccp  = sampler.acceptance_fraction
-    samples=emceechain[:,nburn:,:].reshape((-1,ndim))
     
     if args.fit_R: # Save model params in terms of Rin/Rout
         emceechain[:,:,1:] = Tring_to_R(emceechain[:,:,1:],WD_T,(WD_R*u.cm).to(u.Rsun).value)

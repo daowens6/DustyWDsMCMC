@@ -1,2 +1,2 @@
 Tsubl	2500
-Ttide	197.633
+Rtide	4.65

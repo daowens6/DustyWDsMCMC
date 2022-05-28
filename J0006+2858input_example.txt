@@ -1,6 +1,6 @@
 nwalkers	100
-niters		100000
-nburn		50000
+niters		100
+nburn		50
 
 targname	GaiaJ0006+2858
 
